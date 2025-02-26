@@ -31,8 +31,13 @@
       align-items: center;
       background: rgba(0,0,0,0.7);
       z-index: 3000;
+
+      /* NEW: allow vertical scrolling if content is too tall */
+      overflow-y: auto;
+      /* optional padding for breathing room */
+      padding: 1em;
     }
-    /* Use responsive width to avoid horizontal scrolling on mobile */
+    /* Use responsive width + new max-height & internal scroll */
     #welcomeBox {
       background: #222;
       border: 2px solid #555;
@@ -40,9 +45,14 @@
       padding: 1.5em;
       width: 90%;
       max-width: 500px;
-      margin: 0 auto;
+      margin: 2em auto;
       text-align: center;
+
+      /* NEW: keep the box from exceeding screen height */
+      max-height: 90vh;
+      overflow-y: auto;
     }
+
     #oathContainer {
       margin-top: 1em;
       font-size: 0.9em;
@@ -511,9 +521,8 @@
 
   <script>
     /* 
-      Baddiology with full (questions_5 + questions_10) arrays.
-      This ensures 4 spikes per category no matter which is chosen as weighted (40%).
-      So we always have 16 total spikes.
+      Baddiology with full (questions_5 + questions_10) arrays,
+      ensuring 4 spikes per category no matter which is weighted.
     */
 
     // Oath Overlay
@@ -542,7 +551,7 @@
       document.getElementById('weightChoiceOverlay').style.display = 'flex';
     });
 
-    // Base categories with BOTH question_10 and question_5 arrays:
+    // Category data
     let categories = [];
     let wedgeAngles = [];
     let totalQuestions = 0;
@@ -552,18 +561,16 @@
     let bonusPoints = 0;
     let bonusText = "";
 
-    // 4 categories, each has question_10 with max=10 and question_5 with max=5
+    // Base categories with question_10 + question_5 arrays
     const baseCategoryData = {
       "Moisture Scale": {
         name: "Moisture Scale", color: 0xff00ff,
-        // If Weighted => We'll use these 4 (1-10)
         questions_10: [
           { name: "Face Card", max: 10, value: null },
           { name: "Build Preference", max: 10, value: null },
           { name: "Height Preference", max: 10, value: null },
           { name: "Overall Attractiveness", max: 10, value: null }
         ],
-        // If NOT Weighted => We'll use these 4 (1-5)
         questions_5: [
           { name: "Face Card", max: 5, value: null },
           { name: "Build Preference", max: 5, value: null },
@@ -618,16 +625,17 @@
       }
     };
 
-    // Weighted category radio label elements
+    // Weighted category labels
     const labelMoisture = document.getElementById('labelMoisture');
-    const labelEmotion = document.getElementById('labelEmotion');
-    const labelNecess = document.getElementById('labelNecess');
-    const labelHusband = document.getElementById('labelHusband');
+    const labelEmotion  = document.getElementById('labelEmotion');
+    const labelNecess   = document.getElementById('labelNecess');
+    const labelHusband  = document.getElementById('labelHusband');
+
     const radioEls = [
       { el: document.getElementById('optMoisture'), labelEl: labelMoisture },
-      { el: document.getElementById('optEmotion'), labelEl: labelEmotion },
-      { el: document.getElementById('optNecess'),  labelEl: labelNecess },
-      { el: document.getElementById('optHusband'), labelEl: labelHusband }
+      { el: document.getElementById('optEmotion'),  labelEl: labelEmotion },
+      { el: document.getElementById('optNecess'),   labelEl: labelNecess },
+      { el: document.getElementById('optHusband'),  labelEl: labelHusband }
     ];
     radioEls.forEach(r => {
       r.el.addEventListener('change', () => {
@@ -654,12 +662,11 @@
       categories = [];
       wedgeAngles = [];
 
-      // Weighted => use question_10 (40% wedge)
-      // Others => use question_5 (20% wedge)
+      // Weighted => questions_10 (40% wedge),
+      // Others => questions_5 (20% wedge)
       Object.keys(baseCategoryData).forEach(catKey => {
         const baseCat = baseCategoryData[catKey];
         if (catKey === weightedCategoryName) {
-          // 40% wedge
           wedgeAngles.push(Math.PI * 0.8);
           categories.push({
             name: baseCat.name,
@@ -667,7 +674,6 @@
             questions: JSON.parse(JSON.stringify(baseCat.questions_10))
           });
         } else {
-          // 20% wedge
           wedgeAngles.push(Math.PI * 0.4);
           categories.push({
             name: baseCat.name,
@@ -779,7 +785,7 @@
         catLabelObj.position.set(lx, ly, lz);
         wedgeGroup.add(catLabelObj);
 
-        // Build spikes (1 per question)
+        // Build spikes
         const stepTheta = Math.PI / (cat.questions.length + 1);
         cat.questions.forEach((q, qIndex) => {
           const spikeTheta = stepTheta * (qIndex + 1);
@@ -812,7 +818,7 @@
           spikeLabelObj.position.set(0, 0, 2.0);
           spikeMesh.add(spikeLabelObj);
 
-          // Save spike data for interaction
+          // Save spike data
           spikeData.push({
             categoryIndex: i,
             questionIndex: qIndex,
@@ -900,7 +906,6 @@
       raycaster = new THREE.Raycaster();
       mouse = new THREE.Vector2();
       renderer.domElement.addEventListener('pointermove', onPointerMove, false);
-      // pointerdown can be replaced with 'click' if mobile tapping is glitchy:
       renderer.domElement.addEventListener('pointerdown', onPointerDown, false);
     }
     function onPointerDown(e){
@@ -1091,8 +1096,6 @@
         });
       });
 
-      // Same approach as Zaddyology: sumAll / 100 * 10, then +0.5 if bonus. 
-      // Each Weighted category uses the 10-point scale, while others use 5-point scale.
       let finalScore = (sumAll / 100) * 10;
       if (bonusCompleted) {
         finalScore += 0.5;
@@ -1102,7 +1105,6 @@
       }
 
       const outOfTen = finalScore.toFixed(1);
-      // Pull from hidden fields (populated after oath step)
       const beholderName = document.getElementById('beholderInput').value || "Unknown";
       const appleName = document.getElementById('appleInput').value || "Unknown";
       let bonusIndicator = bonusCompleted ? "(+ Bonus)" : "";
